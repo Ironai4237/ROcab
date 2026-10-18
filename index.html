@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocabulary Randomizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #aaaab8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 350px;
+        }
+        h1 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .text-container {
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .word-box {
+            font-size: 26px;
+            font-weight: bold;
+            color: #007bff;
+            opacity: 1;
+            transition: opacity 0.25s ease-in-out;
+        }
+        .definition-box {
+            font-size: 20px;
+            color: #01984a;
+            margin-top: 10px;
+            opacity: 1;
+            transition: opacity 0.25s ease-in-out;
+            min-height: 28px;
+        }
+        .fade-out {
+            opacity: 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.1s ease, background-color 0.2s;
+            outline: none;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:active {
+            transform: scale(0.90);
+        }
+        .btn-reveal {
+            background-color: #04cf66;
+            color: #ffffff;
+        }
+        .btn-reveal:hover {
+            background-color: #009e4d;
+        }
+        .bounce {
+            animation: bounceAnim 0.3s ease;
+        }
+        @keyframes bounceAnim {
+            0% { transform: scale(1); }
+            40% { transform: scale(0.88); }
+            70% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>ROcab</h1>
+        <div class="text-container">
+            <div id="wordDisplay" class="word-box">Press Random to Start</div>
+            <div id="definitionDisplay" class="definition-box" style="display: none;"></div>
+        </div>
+        
+        <div>
+            <button id="btnNext" onclick="triggerNextWord(this)">Random</button>
+            <button id="btnReveal" class="btn-reveal" onclick="triggerReveal(this)">Reveal Thai Definition</button>
+        </div>
+    </div>
+
+    <script>
+        const vocabList = [
+            { english: "Bourgeois", thai: "ชนชั้นกาง" },
+            { english: "Ephemeral", thai: "ชั่วคราว" },
+            { english: "Abject", thai: "น่าเวทนา" },
+            { english: "Aberration", thai: "ผิดปกติ" },
+            { english: "Abrogate", thai: "ยกเลิก" },
+            { english: "Capricious", thai: "ไม่แน่นอน" },
+            { english: "Deleterious", thai: "เป็นอันตราย" },
+            { english: "Esoteric", thai: "เข้าใจได้ยาก" },
+            { english: "Pernicious", thai: "เป็นอันตราย" },
+            { english: "Obfuscate", thai: "ทำให้กำกวม" },
+            { english: "Mitigate", thai: "บรรเทา" },
+            { english: "Pragmatic", thai: "เชิงปฏิบัติ" },
+            { english: "Fastidious", thai: "เจ้าระเบียบ" },
+            { english: "Garrulous", thai: "พูดมาก" },
+            { english: "Superfluous", thai: "เกินไป" },
+            { english: "Explanatory", thai: "อธิบาย" },
+            { english: "Managerial", thai: "ผู้บริหาร" },
+            { english: "Postage", thai: "ค่าไปรษณีย์" },
+            { english: "Spacious", thai: "กว้างขวาง" },
+            { english: "Adept", thai: "เชี่ยวชาญ" },
+            { english: "Antipathy", thai: "ความเกลียดชัง" },
+            { english: "Apprise", thai: "แจ้งให้ทราบ" },
+            { english: "Assess", thai: "ประเมิน" },
+            { english: "Bogus", thai: "ปลอม" },
+            { english: "Bias", thai: "อคติ" },
+            { english: "Censure", thai: "วิจารณ์" },
+            { english: "Coherent", thai: "มีเหตุผล" },
+            { english: "Concur", thai: "เห็นด้วย" },
+            { english: "Dedication", thai: "ความมุ่งมั่น" },
+            { english: "Deference", thai: "ความเคารพ" },
+            { english: "Harangue", thai: "พูดจาให้ร้าย" }
+        ];
+
+        let shuffledIndices = [];
+        let currentIndexPointer = -1;
+
+        const randomSound = new Audio('random.wav');
+        const definitionSound = new Audio('definition.wav');
+
+        function playSound(audioObject) {
+            audioObject.currentTime = 0;
+            audioObject.play().catch(error => console.log("Audio play blocked or error:", error));
+        }
+
+        function animateButton(btnElement) {
+            btnElement.classList.remove('bounce');
+            void btnElement.offsetWidth; // Trigger reflow
+            btnElement.classList.add('bounce');
+        }
+
+        function shuffleDeck() {
+            shuffledIndices = vocabList.map((_, index) => index);
+            for (let i = shuffledIndices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledIndices[i], shuffledIndices[j]] = [shuffledIndices[j], shuffledIndices[i]];
+            }
+            currentIndexPointer = -1;
+        }
+
+        function triggerNextWord(btn) {
+            animateButton(btn);
+            playSound(randomSound);
+
+            const wordEl = document.getElementById("wordDisplay");
+            const defEl = document.getElementById("definitionDisplay");
+
+            wordEl.classList.add("fade-out");
+            defEl.classList.add("fade-out");
+
+            setTimeout(() => {
+                if (shuffledIndices.length === 0 || currentIndexPointer >= shuffledIndices.length - 1) {
+                    shuffleDeck();
+                }
+
+                currentIndexPointer++;
+                const actualIndex = shuffledIndices[currentIndexPointer];
+
+                wordEl.innerText = vocabList[actualIndex].english;
+                defEl.innerText = vocabList[actualIndex].thai;
+                defEl.style.display = "none";
+
+                wordEl.classList.remove("fade-out");
+                defEl.classList.remove("fade-out");
+            }, 250);
+        }
+
+        function triggerReveal(btn) {
+            if (currentIndexPointer === -1) return;
+
+            animateButton(btn);
+            playSound(definitionSound);
+
+            const defEl = document.getElementById("definitionDisplay");
+            if (defEl.style.display === "none") {
+                defEl.style.display = "block";
+                defEl.classList.add("fade-out");
+                setTimeout(() => {
+                    defEl.classList.remove("fade-out");
+                }, 50);
+            }
+        }
+    </script>
+
+</body>
+</html>
